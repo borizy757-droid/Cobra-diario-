@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cobra Diario</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f3f5f7;color:#17202a}
+header{background:#111827;color:white;padding:20px;text-align:center}
+header h1{margin:0;font-size:25px}
+nav{display:flex;overflow:auto;background:white;border-bottom:1px solid #ddd}
+nav button{border:0;background:white;padding:14px 12px;font-weight:bold;white-space:nowrap}
+nav button.active{color:#2563eb;border-bottom:3px solid #2563eb}
+main{padding:15px;max-width:700px;margin:auto}
+.card{background:white;border-radius:15px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px #0001}
+input,select{width:100%;padding:12px;margin:6px 0 12px;border:1px solid #ccd2d8;border-radius:9px;font-size:16px}
+button.primary{width:100%;padding:13px;background:#2563eb;color:white;border:0;border-radius:10px;font-size:16px;font-weight:bold}
+button.danger{background:#dc2626;color:white;border:0;border-radius:8px;padding:8px}
+.stat{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat div{background:#eef4ff;padding:15px;border-radius:12px}
+.stat b{display:block;font-size:21px;margin-top:5px}
+.item{border:1px solid #ddd;border-radius:12px;padding:12px;margin:9px 0}
+.small{font-size:13px;color:#667085}
+.money{font-weight:bold;color:#15803d}
+.hidden{display:none}
+h2{margin-top:5px}
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>💰 Cobra Diario</h1>
+<div>Control de préstamos y cobros</div>
+</header>
+
+<nav>
+<button onclick="show('inicio')" id="bInicio">Inicio</button>
+<button onclick="show('clientes')" id="bClientes">Clientes</button>
+<button onclick="show('prestamos')" id="bPrestamos">Préstamos</button>
+<button onclick="show('cobros')" id="bCobros">Cobros</button>
+<button onclick="show('mora')" id="bMora">Mora</button>
+<button onclick="show('reportes')" id="bReportes">Reportes</button>
+</nav>
+
+<main>
+
+<section id="inicio">
+<div class="card">
+<h2>📊 Resumen</h2>
+<div class="stat">
+<div>Clientes<b id="sClientes">0</b></div>
+<div>Préstamos<b id="sPrestamos">0</b></div>
+<div>Total prestado<b id="sPrestado">$0</b></div>
+<div>Total cobrado<b id="sCobrado">$0</b></div>
+</div>
+</div>
+</section>
+
+<section id="clientes" class="hidden">
+<div class="card">
+<h2>👥 Nuevo cliente</h2>
+<input id="nombre" placeholder="Nombre completo">
+<input id="telefono" placeholder="Teléfono">
+<input id="direccion" placeholder="Dirección">
+<button class="primary" onclick="agregarCliente()">Guardar cliente</button>
+</div>
+
+<div class="card">
+<h2>Clientes registrados</h2>
+<div id="listaClientes"></div>
+</div>
+</section>
+
+<section id="prestamos" class="hidden">
+<div class="card">
+<h2>💰 Nuevo préstamo</h2>
+<select id="clientePrestamo"></select>
+<input id="monto" type="number" placeholder="Monto prestado">
+<input id="interes" type="number" placeholder="Interés (%)">
+<input id="cuotas" type="number" placeholder="Número de cuotas diarias">
+<button class="primary" onclick="agregarPrestamo()">Crear préstamo</button>
+</div>
+
+<div class="card">
+<h2>Préstamos</h2>
+<div id="listaPrestamos"></div>
+</div>
+</section>
+
+<section id="cobros" class="hidden">
+<div class="card">
+<h2>💵 Registrar cobro</h2>
+<select id="prestamoCobro"></select>
+<input id="pago" type="number" placeholder="Monto cobrado">
+<button class="primary" onclick="registrarCobro()">Registrar cobro</button>
+</div>
+
+<div class="card">
+<h2>Últimos cobros</h2>
+<div id="listaCobros"></div>
+</div>
+</section>
+
+<section id="mora" class="hidden">
+<div class="card">
+<h2>⚠️ Pendientes / Mora</h2>
+<div id="listaMora"></div>
+</div>
+</section>
+
+<section id="reportes" class="hidden">
+<div class="card">
+<h2>📊 Reportes</h2>
+<div id="reporte"></div>
+</div>
+</section>
+
+</main>
+
+<script>
+let clientes=JSON.parse(localStorage.getItem("clientes")||"[]");
+let prestamos=JSON.parse(localStorage.getItem("prestamos")||"[]");
+let cobros=JSON.parse(localStorage.getItem("cobros")||"[]");
+
+function guardar(){
+localStorage.setItem("clientes",JSON.stringify(clientes));
+localStorage.setItem("prestamos",JSON.stringify(prestamos));
+localStorage.setItem("cobros",JSON.stringify(cobros));
+actualizar();
+}
+
+function dinero(n){
+return "Bs "+Number(n||0).toFixed(2);
+}
+
+function show(id){
+document.querySelectorAll("main section").forEach(x=>x.classList.add("hidden"));
+document.getElementById(id).classList.remove("hidden");
+actualizar();
+}
+
+function agregarCliente(){
+let nombre=document.getElementById("nombre").value.trim();
+let telefono=document.getElementById("telefono").value.trim();
+let direccion=document.getElementById("direccion").value.trim();
+
+if(!nombre){alert("Escribe el nombre del cliente");return}
+
+clientes.push({
+id:Date.now(),
+nombre,
+telefono,
+direccion
+});
+
+document.getElementById("nombre").value="";
+document.getElementById("telefono").value="";
+document.getElementById("direccion").value="";
+guardar();
+alert("Cliente guardado ✅");
+}
+
+function agregarPrestamo(){
+let clienteId=Number(document.getElementById("clientePrestamo").value);
+let monto=Number(document.getElementById("monto").value);
+let interes=Number(document.getElementById("interes").value||0);
+let cuotas=Number(document.getElementById("cuotas").value);
+
+if(!clienteId||!monto||!cuotas){
+alert("Completa los datos del préstamo");
+return;
+}
+
+let total=monto+(monto*interes/100);
+let cuota=total/cuotas;
+
+prestamos.push({
+id:Date.now(),
+clienteId,
+monto,
+interes,
+cuotas,
+total,
+cuota,
+pagado:0,
+fecha:new Date().toLocaleDateString()
+});
+
+document.getElementById("monto").value="";
+document.getElementById("interes").value="";
+document.getElementById("cuotas").value="";
+guardar();
+alert("Préstamo creado ✅");
+}
+
+function registrarCobro(){
+let prestamoId=Number(document.getElementById("prestamoCobro").value);
+let pago=Number(document.getElementById("pago").value);
+
+if(!prestamoId||!pago){
+alert("Selecciona un préstamo y escribe el monto");
+return;
+}
+
+let p=prestamos.find(x=>x.id===prestamoId);
+
+if(!p){alert("Préstamo no encontrado");return}
+
+let pendiente=p.total-p.pagado;
+
+if(pago>pendiente){
+alert("El cobro no puede ser mayor al saldo pendiente");
+return;
+}
+
+p.pagado+=pago;
+
+cobros.unshift({
+id:Date.now(),
+prestamoId,
+monto:pago,
+fecha:new Date().toLocaleString()
+});
+
+document.getElementById("pago").value="";
+guardar();
+alert("Cobro registrado ✅");
+}
+
+function actualizar(){
+
+document.getElementById("sClientes").textContent=clientes.length;
+document.getElementById("sPrestamos").textContent=prestamos.length;
+
+let prestado=prestamos.reduce((a,p)=>a+p.monto,0);
+let cobrado=cobros.reduce((a,c)=>a+c.monto,0);
+
+document.getElementById("sPrestado").textContent=dinero(prestado);
+document.getElementById("sCobrado").textContent=dinero(cobrado);
+
+let lc=document.getElementById("listaClientes");
+lc.innerHTML="";
+
+clientes.forEach(c=>{
+lc.innerHTML+=`
+<div class="item">
+<b>${c.nombre}</b>
+<div class="small">📞 ${c.telefono||"Sin teléfono"}</div>
+<div class="small">📍 ${c.direccion||"Sin dirección"}</div>
+</div>`;
+});
+
+let select=document.getElementById("clientePrestamo");
+select.innerHTML='<option value="">Seleccionar cliente</option>';
+
+clientes.forEach(c=>{
+select.innerHTML+=`<option value="${c.id}">${c.nombre}</option>`;
+});
+
+let lp=document.getElementById("listaPrestamos");
+lp.innerHTML="";
+
+prestamos.forEach(p=>{
+let c=clientes.find(x=>x.id===p.clienteId);
+let saldo=p.total-p.pagado;
+
+lp.innerHTML+=`
+<div class="item">
+<b>${c?c.nombre:"Cliente eliminado"}</b>
+<div>Prestado: ${dinero(p.monto)}</div>
+<div>Total a pagar: ${dinero(p.total)}</div>
+<div>Cuota diaria: ${dinero(p.cuota)}</div>
+<div>Pagado: ${dinero(p.pagado)}</div>
+<div>Saldo: <b>${dinero(saldo)}</b></div>
+<div class="small">${p.cuotas} cuotas · Interés ${p.interes}%</div>
+</div>`;
+});
+
+let sc=document.getElementById("prestamoCobro");
+sc.innerHTML='<option value="">Seleccionar préstamo</option>';
+
+prestamos.forEach(p=>{
+let c=clientes.find(x=>x.id===p.clienteId);
+let saldo=p.total-p.pagado;
+if(saldo>0){
+sc.innerHTML+=`<option value="${p.id}">${c?c.nombre:"Cliente"} - Saldo ${dinero(saldo)}</option>`;
+}
+});
+
+let lco=document.getElementById("listaCobros");
+lco.innerHTML="";
+
+cobros.slice(0,20).forEach(c=>{
+let p=prestamos.find(x=>x.id===c.prestamoId);
+let cli=p?clientes.find(x=>x.id===p.clienteId):null;
+
+lco.innerHTML+=`
+<div class="item">
+<b>${cli?cli.nombre:"Cliente"}</b>
+<div class="money">Cobro: ${dinero(c.monto)}</div>
+<div class="small">${c.fecha}</div>
+</div>`;
+});
+
+let lm=document.getElementById("listaMora");
+lm.innerHTML="";
+
+prestamos.forEach(p=>{
+let saldo=p.total-p.pagado;
+
+if(saldo>0){
+let c=clientes.find(x=>x.id===p.clienteId);
+
+lm.innerHTML+=`
+<div class="item">
+<b>⚠️ ${c?c.nombre:"Cliente"}</b>
+<div>Saldo pendiente: <b>${dinero(saldo)}</b></div>
+<div>Cuota diaria: ${dinero(p.cuota)}</div>
+</div>`;
+}
+});
+
+let totalSaldo=prestamos.reduce((a,p)=>a+(p.total-p.pagado),0);
+let totalInteres=prestamos.reduce((a,p)=>a+(p.total-p.monto),0);
+
+document.getElementById("reporte").innerHTML=`
+<div class="item">👥 Clientes: <b>${clientes.length}</b></div>
+<div class="item">💰 Préstamos: <b>${prestamos.length}</b></div>
+<div class="item">💵 Capital prestado: <b>${dinero(prestado)}</b></div>
+<div class="item">📈 Interés generado: <b>${dinero(totalInteres)}</b></div>
+<div class="item">✅ Total cobrado: <b>${dinero(cobrado)}</b></div>
+<div class="item">⚠️ Saldo pendiente: <b>${dinero(totalSaldo)}</b></div>
+`;
+}
+
+actualizar();
+show("inicio");
+</script>
+
+</body>
+</html>
