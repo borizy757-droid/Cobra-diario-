@@ -1,0 +1,9 @@
+{
+  "name": "Cobra Diario",
+  "short_name": "Cobra Diario",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "description": "Aplicación para administrar préstamos y cobros diarios"
+}
